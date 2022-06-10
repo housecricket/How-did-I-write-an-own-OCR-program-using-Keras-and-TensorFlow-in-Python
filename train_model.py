@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelBinarizer
 from tensorflow.keras.optimizers import SGD
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from imutils import build_montages
 
 from models import ResNet
 # from typing_extensions import Required
@@ -22,7 +23,7 @@ from utils import load_zero_nine_dataset
 ap = argparse.ArgumentParser()
 
 ap.add_argument("-a", "--az", required=True, help="path to A-Z dataset")
-ap.add_argument("-m", "--model", type=str, required=True,
+ap.add_argument("-m", "--model", default='trained_ocr.model', type=str,
                 help="path to output the trained handwriting recognition model")
 ap.add_argument("-p", "--plot", type=str, default="plot.png",
                 help="path to output the training history file")
@@ -66,7 +67,7 @@ data /= 255.0
 le = LabelBinarizer()
 
 labels = le.fit_transform(labels)
-ounts = labels.sum(axis=0)
+# ounts = labels.sum(axis=0)
 
 # account for skew in the labeled data
 classTotals = labels.sum(axis=0)
@@ -88,7 +89,7 @@ aug = ImageDataGenerator(rotation_range=10, zoom_range=0.05, width_shift_range=0
 # initialize and compile our deep neural network
 print("[INFO] compiling model...")
 
-opt = SGD(lr=INIT_LR, decay=INIT_LR / EPOCHS)
+opt = SGD(learning_rate=INIT_LR, decay=INIT_LR / EPOCHS)
 model = ResNet.build(32, 32, 1, len(le.classes_), (3, 3, 3),
                      (64, 64, 128, 256), reg=0.0005)
 model.compile(loss="categorical_crossentropy",
@@ -134,32 +135,33 @@ images = []
 for i in np.random.choice(np.arange(0, len(testY)), size=(49,)):
     # classify the character
     probs = model.predict(testX[np.newaxis, i])
-prediction = probs.argmax(axis=1)
-label = labelNames[prediction[0]]
+    prediction = probs.argmax(axis=1)
+    label = labelNames[prediction[0]]
 
-# extract the image from the test data and initialize the text
-# label color as green (correct)
-image = (testX[i] * 255).astype("uint8")
-color = (0, 255, 0)
+    # extract the image from the test data and initialize the text
+    # label color as green (correct)
+    image = (testX[i] * 255).astype("uint8")
+    color = (0, 255, 0)
 
-# otherwise, the class label prediction is incorrect
-if prediction[0] != np.argmax(testY[i]):
-    color = (0, 0, 255)
+    # otherwise, the class label prediction is incorrect
+    if prediction[0] != np.argmax(testY[i]):
+        color = (0, 0, 255)
 
-# merge the channels into one image, resize the image from 32x32
-# to 96x96 so we can better see it and then draw the predicted
-# label on the image
-image = cv2.merge([image] * 3)
-image = cv2.resize(image, (96, 96), interpolation=cv2.INTER_LINEAR)
-cv2.putText(image, label, (5, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
-color, 2)
+    # merge the channels into one image, resize the image from 32x32
+    # to 96x96 so we can better see it and then draw the predicted
+    # label on the image
+    image = cv2.merge([image] * 3)
+    image = cv2.resize(image, (96, 96), interpolation=cv2.INTER_LINEAR)
+    cv2.putText(image, label, (5, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.75,
+    color, 2)
 
-# add the image to our list of output images
-images.append(image)
+    # add the image to our list of output images
+    images.append(image)
+
 
 # construct the montage for the images
-montage = build_montages(images, (96, 96), (7, 7))[0]
+images = np.array(images).reshape(7, 7, 96, 96, 3).swapaxes(1, 2).reshape(672, 672, 3)
 
 # show the output montage
-cv2.imshow("OCR Results", montage)
-cv2.waitKey(0)
+plt.figure(figsize=(10, 10))
+plt.imshow(images)

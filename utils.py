@@ -22,12 +22,12 @@ def load_az_dataset(dataset_path):
         data.append(image)
         labels.append(label)
 
-        # convert the data and labels to NumPy arrays
-        data = np.array(data, dtype="float32")
-        labels = np.array(labels, dtype="int")
+    # convert the data and labels to NumPy arrays
+    data = np.array(data, dtype="float32")
+    labels = np.array(labels, dtype="int")
 
-        # return a 2-tuple of the A-Z data and labels
-        return (data, labels)
+    # return a 2-tuple of the A-Z data and labels
+    return (data, labels)
 
 
 def load_zero_nine_dataset():
